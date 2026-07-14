@@ -34,3 +34,79 @@ IMAGE_DIR.mkdir(parents=True,exist_ok=True)
 TEXT_DIR.mkdir(parents=True,exist_ok=True)
 TABLE_DIR.mkdir(parents=True,exist_ok=True)
 IMAGE_DIR.mkdir(parents=True,exist_ok=True)
+
+#Extract Text fUNCTION
+def extract_text():
+    print("\n Extracting Text...")
+    
+    document = fitz.open(PDF_PATH)
+    
+    for pageno,page in enumerate(document):
+        text = page.get_text()
+        
+        file_path= TEXT_DIR/ f"page_{pageno +1}.txt"
+        
+        #write and create the file in text directory
+        with open(file_path,"w",encoding="utf-8") as f:
+            f.write(text)
+            
+    document.close()
+    print("\nText extraction completed.")
+    
+
+#Extract Image FUnction
+def extract_images():
+    print("\nExtracting images...")
+    
+    document = fitz.open(PDF_PATH)
+    
+    image_counter =1
+    
+    for pageno,page in enumerate(document):
+        
+        #getting images list to loop through it
+        image_list= page.get_images(full=True)
+        
+        for image in image_list:
+            id=image[0] #it returns a page ID of that image
+            base_image= document.extract_image(id)
+            
+            #getting image dta
+            image_bytes= base_image["image"]
+            image_extention= base_image["ext"]
+            image_name= f"page_{pageno +1}_img_{image_counter}.{image_extention}"
+            image_path= IMAGE_DIR/ image_name
+            
+            with open(image_path,"wb") as file:
+                file.write(image_bytes)
+            image_counter+=1
+            
+    document.close()
+    print("Image extraction completed.")
+    
+    
+#Extracting Tables
+def extract_tables():
+    print("\nExtracting tables...")
+
+    with pdfplumber.open(PDF_PATH) as pdf:
+        table_counter = 1
+        
+        for pageno,page in enumerate(pdf):
+            tables= page.extract_table() 
+            
+            for table in tables:
+                file_name= TABLE_DIR/f"page_{pageno+1}_table_{table_counter}.txt"
+                
+                with open(file_name,"w",encoding="utf-8") as file:
+                    for row in table:
+                        #row list
+                        row=[str(data) if data else "" for data in row]
+                        #writing in file
+                        file.write("|".join(row) + "\n")
+                        
+                table_counter +=1
+                
+
+    print("Table extraction completed.")
+    
