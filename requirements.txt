@@ -1,0 +1,7 @@
+google-genai
+pymupdf
+pdfplumber
+pillow
+python-dotenv
+langchain-text-splitters
+langchain-chroma
