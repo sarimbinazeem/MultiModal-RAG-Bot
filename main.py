@@ -290,3 +290,34 @@ def create_vector_database():
     print("Vector Database Created Successfully!")
 
     return db
+
+#retrieval of user query
+def retrieval(query):
+    
+    db = create_vector_database()
+    retriever = db.as_retriever(
+    search_type = "mmr",
+    search_kwargs={"k":3,"fetch_k":10,"lambda_mult":0.5},
+    )
+    
+    documents = retriever.invoke(query)
+
+    print("\nRETRIEVED CONTEXT")
+    print("=" * 70)
+
+    for i, doc in enumerate(documents, start=1):
+
+        print(f"\nResult {i}")
+
+        print(f"Type   : {doc.metadata.get('type')}")
+
+        print(f"Source : {doc.metadata.get('source')}")
+
+        if "chunk" in doc.metadata:
+            print(f"Chunk  : {doc.metadata.get('chunk')}")
+
+        print("\nContent:")
+
+        print(doc.page_content[:500])
+        print()
+        
