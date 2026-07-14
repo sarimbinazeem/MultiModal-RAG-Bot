@@ -11,7 +11,9 @@ from PIL import Image
 from dotenv import load_dotenv
 from google import genai
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_core.documents import Document
+from langchain_chroma import Chroma
 
 #Loading API keys
 load_dotenv()
@@ -24,6 +26,11 @@ if not API_KEY:
 #Gemini Client
 client=genai.Client(api_key=API_KEY)
 MODEL= "gemini-2.5-flash"
+embedding_model = GoogleGenerativeAIEmbeddings(
+    model="models/text-embedding-004",
+    google_api_key=API_KEY
+)
+
 
 
 #All Paths
@@ -256,3 +263,30 @@ def build_knowledge():
     print(f"\nKnowledge Base Created!")
 
     print(f"Documents : {len(documents)}")
+    
+#Creating documents into Document() format
+def convert_documents():
+    docs=[]
+    
+    for item in documents:
+        docs.append(
+            Document(
+                page_content=item["content"],
+                metadata=item["metadata"]
+            )
+        )
+        
+#Vector database creation
+def create_vector_database():
+    print("\nCreating Vector Database...")
+    docs= convert_documents()
+    
+    db = Chroma.from_documents(
+        documents=docs,
+        embedding=embedding_model,
+        persist_directory=str(VECTOR_DIR),
+    ) 
+    
+    print("Vector Database Created Successfully!")
+
+    return db
