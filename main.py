@@ -370,6 +370,32 @@ def chat(query,retrievedDocs):
     
     return response.text
 
+def demo():
+
+    sample_queries = [
+        "What is multi-head attention?",
+        "Explain the encoder-decoder architecture.",
+        "What BLEU score did the Transformer achieve?"
+    ]
+
+    print("\n================ DEMONSTRATION ================\n")
+
+    for query in sample_queries:
+
+        print(f"\nQUESTION: {query}")
+
+        docs = retrieval_documents(query)
+
+        retrieval(query, docs)
+
+        answer = chat(query, docs)
+
+        print("\nFINAL ANSWER")
+        print("=" * 60)
+        print(answer)
+        print("\n" + "-" * 60)
+        
+        
 def chatbot():
     print("\n======MultiModal RAG Chatbot=======\n")
     print("Type exit to quit\n")
@@ -416,5 +442,5 @@ if __name__ == "__main__":
             "lambda_mult": 0.5
         }
     )
-
+    demo()
     chatbot()
