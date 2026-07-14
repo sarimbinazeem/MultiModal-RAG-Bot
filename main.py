@@ -45,7 +45,7 @@ TABLE_DIR= EXTRACTED_DIR / "tables"
 IMAGE_DIR.mkdir(parents=True,exist_ok=True)
 TEXT_DIR.mkdir(parents=True,exist_ok=True)
 TABLE_DIR.mkdir(parents=True,exist_ok=True)
-IMAGE_DIR.mkdir(parents=True,exist_ok=True)
+VECTOR_DIR.mkdir(parents=True,exist_ok=True)
 
 #Prompt Variable
 PROMPT= """
@@ -113,8 +113,8 @@ def extract_images():
         image_list= page.get_images(full=True)
         
         for image in image_list:
-            id=image[0] #it returns a page ID of that image
-            base_image= document.extract_image(id)
+            xref=image[0] #it returns a page ID of that image
+            base_image= document.extract_image(xref)
             
             #getting image dta
             image_bytes= base_image["image"]
@@ -138,7 +138,7 @@ def extract_tables():
         table_counter = 1
         
         for pageno,page in enumerate(pdf):
-            tables= page.extract_table() 
+            tables= page.extract_tables() 
             
             for table in tables:
                 file_name= TABLE_DIR/f"page_{pageno+1}_table_{table_counter}.txt"
@@ -164,28 +164,28 @@ def describe_image():
     for image_file in IMAGE_DIR.iterdir():
         if image_file.suffix.lower() not in [".png",".jpg",".jpeg"]:
             continue
-    image = Image.open(image_file)
-    
-    response=client.models.generate_content(
-        model=MODEL,
-        contents=[
-            PROMPT,
-            image
-        ]
-    ) 
-    
-    descriptions.append(
-        {
-            "image": image_file.name,
-            "description": response.text
-        }
-    )
-    
-    output_path = EXTRACTED_DIR/ "image_description.json"
-    
-    with open(output_path,"w",encoding="utf-8" ) as file:
-        json.dump(descriptions,file,indent=4,ensure_ascii=False) 
+        image = Image.open(image_file)
         
+        response=client.models.generate_content(
+            model=MODEL,
+            contents=[
+                PROMPT,
+                image
+            ]
+        ) 
+        
+        descriptions.append(
+            {
+                "image": image_file.name,
+                "description": response.text
+            }
+        )
+        
+    output_path = EXTRACTED_DIR/ "image_descriptions.json"
+        
+    with open(output_path,"w",encoding="utf-8" ) as file:
+         json.dump(descriptions,file,indent=4,ensure_ascii=False) 
+            
     print("Image descriptions saved successfully.")
     
 def build_knowledge():
@@ -197,31 +197,31 @@ def build_knowledge():
         if file.suffix != ".txt":
             continue
         
-    with open(file, "r", encoding="utf-8") as f:
+        with open(file, "r", encoding="utf-8") as f:
 
-        text = f.read()
+            text = f.read()
 
-    chunks = text_splitter.split_text(text)
+        chunks = text_splitter.split_text(text)
 
-    for i, chunk in enumerate(chunks):
+        for i, chunk in enumerate(chunks):
 
-        documents.append({
+            documents.append({
 
-            "content": chunk,
+                "content": chunk,
 
-            "metadata":{
+                "metadata":{
 
-                "type":"text",
+                    "type":"text",
 
-                "source":file.name,
+                    "source":file.name,
 
-                "chunk":i+1
+                    "chunk":i+1
 
-            }
+                }
 
-        })
-        
-        #the documents have chunks now instead of pages
+            })
+            
+            #the documents have chunks now instead of pages
         
     #Tables
     for file in TABLE_DIR.iterdir():
@@ -276,6 +276,8 @@ def convert_documents():
             )
         )
         
+    return docs
+        
 #Vector database creation
 def create_vector_database():
     print("\nCreating Vector Database...")
@@ -293,18 +295,10 @@ def create_vector_database():
 
 #retrieval of user query
 def retrieval_documents(query):
-    db = create_vector_database()
-    retriever = db.as_retriever(
-    search_type = "mmr",
-    search_kwargs={"k":3,"fetch_k":10,"lambda_mult":0.5},
-    )
-    
-    documents = retriever.invoke(query)
-    return documents
+    return retriever.invoke(query)
 
-def retrieval(query):
+def retrieval(query,documents):
     
-    documents= retrieval_documents(query)
 
     print("\nRETRIEVED CONTEXT")
     print("=" * 70)
@@ -376,3 +370,51 @@ def chat(query,retrievedDocs):
     
     return response.text
 
+def chatbot():
+    print("\n======MultiModal RAG Chatbot=======\n")
+    print("Type exit to quit\n")
+    
+    while True:
+
+        query = input("Ask a question: ").strip()
+
+        if query.lower() == "exit":
+            print("\n See You Soon!")
+            break
+        
+        documents= retrieval_documents(query)
+        retrieval(query,documents)
+        
+        answer=chat(query,documents)
+        
+        print("FINAL ANSWER")
+        print("=" * 80)
+        print(answer)
+        
+if __name__ == "__main__":
+    if VECTOR_DIR.exists() and any(VECTOR_DIR.iterdir()):
+        print("Existing vector database found.")
+        db = Chroma(
+            persist_directory=str(VECTOR_DIR),
+            embedding_function=embedding_model
+        )
+        
+    else:
+        extract_text()
+        extract_images()
+        extract_tables()
+        describe_image()
+        build_knowledge()
+        db = create_vector_database()
+        
+        
+    retriever = db.as_retriever(
+        search_type="mmr",
+        search_kwargs={
+            "k": 3,
+            "fetch_k": 10,
+            "lambda_mult": 0.5
+        }
+    )
+
+    chatbot()
