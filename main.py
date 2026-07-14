@@ -10,6 +10,8 @@ import pdfplumber #for table extraction
 from PIL import Image
 from dotenv import load_dotenv
 from google import genai
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
 
 #Loading API keys
 load_dotenv()
@@ -64,6 +66,12 @@ Explain what the figure is trying to teach
 
 #Knowledge base
 documents=[]
+
+#Text Splitter
+text_splitter= RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200
+)
 
 #Extract Text fUNCTION
 def extract_text():
@@ -182,17 +190,32 @@ def build_knowledge():
         if file.suffix != ".txt":
             continue
         
-        with open(file,"r",encoding="utf-8") as f:
-            documents.append(
-                "content":f.read(),
-                "metadata": {
-                    "type":"text",
+    with open(file, "r", encoding="utf-8") as f:
 
-                    "source":file.name
+        text = f.read()
 
-                }
-            )
-            
+    chunks = text_splitter.split_text(text)
+
+    for i, chunk in enumerate(chunks):
+
+        documents.append({
+
+            "content": chunk,
+
+            "metadata":{
+
+                "type":"text",
+
+                "source":file.name,
+
+                "chunk":i+1
+
+            }
+
+        })
+        
+        #the documents have chunks now instead of pages
+        
     #Tables
     for file in TABLE_DIR.iterdir():
         if file.suffix != ".txt":
