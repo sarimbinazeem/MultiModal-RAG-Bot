@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+import json
 
 import fitz #for text and images extractions
 import pdfplumber #for table extraction
@@ -20,6 +21,8 @@ if not API_KEY:
  
 #Gemini Client
 client=genai.Client(api_key=API_KEY)
+MODEL= "gemini-2.5-flash"
+
 
 #All Paths
 PDF_PATH= Path("data/Attention_Is_All_You_Need.pdf")
@@ -34,6 +37,32 @@ IMAGE_DIR.mkdir(parents=True,exist_ok=True)
 TEXT_DIR.mkdir(parents=True,exist_ok=True)
 TABLE_DIR.mkdir(parents=True,exist_ok=True)
 IMAGE_DIR.mkdir(parents=True,exist_ok=True)
+
+#Prompt Variable
+PROMPT= """
+
+You are a helpful assistant.
+
+You are analyzing a figure from the research paper:
+Attention is All you need
+
+Describe the image in detail.
+
+If the image contains:
+- Flowcharts
+- Architechure Diagrams
+- Mathematical Equations
+- Attention mechanism
+-Graphs
+- Charts
+- Tables
+
+Please explain them carefully and should contain everything that is inside the pdf image.
+Do NOT simply list objects.
+Explain what the figure is trying to teach
+"""
+
+
 
 #Extract Text fUNCTION
 def extract_text():
@@ -110,3 +139,35 @@ def extract_tables():
 
     print("Table extraction completed.")
     
+def describe_image():
+
+    print("\nDescribing images using Gemini...")
+    
+    descriptions=[]
+    
+    for image_file in IMAGE_DIR.iterdir():
+        if image_file.suffix.lower() not in [".png",".jpg",".jpeg"]:
+            continue
+    image = Image.open(image_file)
+    
+    response=client.models.generate_content(
+        model=MODEL,
+        contents=[
+            PROMPT,
+            image
+        ]
+    ) 
+    
+    descriptions.append(
+        {
+            "image": image_file.name,
+            "description": response.text
+        }
+    )
+    
+    output_path = EXTRACTED_DIR/ "image_description.json"
+    
+    with open(output_path,"w",encoding="utf-8" ) as file:
+        json.dump(descriptions,file,indent=4,ensure_ascii=False) 
+        
+    print("Image descriptions saved successfully.")
