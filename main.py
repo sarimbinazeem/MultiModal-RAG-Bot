@@ -62,7 +62,8 @@ Do NOT simply list objects.
 Explain what the figure is trying to teach
 """
 
-
+#Knowledge base
+documents=[]
 
 #Extract Text fUNCTION
 def extract_text():
@@ -171,3 +172,64 @@ def describe_image():
         json.dump(descriptions,file,indent=4,ensure_ascii=False) 
         
     print("Image descriptions saved successfully.")
+    
+def build_knowledge():
+    print("\nBuilding knowledge base...")
+    
+    #Text
+    for file in TEXT_DIR.iterdir():
+        
+        if file.suffix != ".txt":
+            continue
+        
+        with open(file,"r",encoding="utf-8") as f:
+            documents.append(
+                "content":f.read(),
+                "metadata": {
+                    "type":"text",
+
+                    "source":file.name
+
+                }
+            )
+            
+    #Tables
+    for file in TABLE_DIR.iterdir():
+        if file.suffix != ".txt":
+            continue
+        
+        with open(file,"r",encoding="utf-8") as f:
+            documents.append(
+                {
+
+                "content":f.read(),
+
+                "metadata":{
+
+                    "type":"table",
+
+                    "source":file.name
+                }
+                }
+            )
+            
+    #Images
+    with open(EXTRACTED_DIR/"image_descriptions.json","r",encoding="utf-8") as file:
+        image_data=json.load(file)
+        
+    for image in image_data:
+        documents.append(
+            {
+                "content":image["description"],
+                "metadata":{
+
+                "type":"image",
+
+                "source":image["image"]
+                }
+            }
+        )
+        
+    print(f"\nKnowledge Base Created!")
+
+    print(f"Documents : {len(documents)}")
