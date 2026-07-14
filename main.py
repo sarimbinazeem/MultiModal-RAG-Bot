@@ -292,8 +292,7 @@ def create_vector_database():
     return db
 
 #retrieval of user query
-def retrieval(query):
-    
+def retrieval_documents(query):
     db = create_vector_database()
     retriever = db.as_retriever(
     search_type = "mmr",
@@ -301,6 +300,11 @@ def retrieval(query):
     )
     
     documents = retriever.invoke(query)
+    return documents
+
+def retrieval(query):
+    
+    documents= retrieval_documents(query)
 
     print("\nRETRIEVED CONTEXT")
     print("=" * 70)
@@ -321,3 +325,54 @@ def retrieval(query):
         print(doc.page_content[:500])
         print()
         
+#RAG PROMPT
+RAG_PROMPT= """
+You are a helpful assistant.
+Answer the user's question ONLY using the retrieved context provided below.
+
+If the answer is not present in the context, reply:
+
+"I couldn't find the answer in the retrieved context."
+
+Do not use outside knowledge.
+
+Retrieved Context:
+
+{context}
+
+Question:
+
+{question}
+"""
+
+#To build context
+def build_context(retrievedDocuments):
+    context=""
+    for doc in retrievedDocuments:
+        context += f"""
+            Type: {doc.metadata.get("type")}
+            Source: {doc.metadata.get("source")}
+
+            {doc.page_content}
+
+            ------------------------------------------
+            """
+
+    return context
+        
+#Generating AI response
+def chat(query,retrievedDocs):
+    context= build_context(retrievedDocs)
+    
+    prompt= RAG_PROMPT.format(
+        context= context,
+        question=query
+    )
+    
+    response=client.models.generate_content(
+        model=MODEL,
+        contents=prompt
+    )
+    
+    return response.text
+
