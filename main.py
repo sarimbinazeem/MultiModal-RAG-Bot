@@ -15,6 +15,10 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 
+#initliazing database
+retriever = None
+db = None
+
 #Loading API keys
 load_dotenv()
 API_KEY= os.getenv("GEMINI_API_KEY")
@@ -80,6 +84,46 @@ text_splitter= RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200
 )
+
+
+#initliaze helper function
+def load_vector_database():
+
+    db = Chroma(
+        persist_directory=str(VECTOR_DIR),
+        embedding_function=embedding_model
+    )
+
+    return db
+
+def initialize_rag():
+    global db, retriever
+
+    if db is not None:
+        return
+
+    # If the Chroma collection doesn't exist yet
+    if not (VECTOR_DIR / "chroma.sqlite3").exists():
+
+        print("Creating Vector Database...")
+
+        extract_text()
+        extract_images()
+        extract_tables()
+        describe_image()
+
+        build_knowledge()
+
+        db = create_vector_database()
+
+    else:
+
+        print("Loading Existing Vector Database...")
+
+        db = load_vector_database()
+
+    retriever = db.as_retriever(search_kwargs={"k": 5})
+
 
 #Extract Text fUNCTION
 def extract_text():
@@ -301,6 +345,8 @@ def create_vector_database():
 
 #retrieval of user query
 def retrieval_documents(query):
+
+    initialize_rag()
     return retriever.invoke(query)
 
 def retrieval(query,documents):
@@ -424,29 +470,5 @@ def chatbot():
         print(answer)
         
 if __name__ == "__main__":
-    if VECTOR_DIR.exists() and any(VECTOR_DIR.iterdir()):
-        print("Existing vector database found.")
-        db = Chroma(
-            persist_directory=str(VECTOR_DIR),
-            embedding_function=embedding_model
-        )
-        
-    else:
-        extract_text()
-        extract_images()
-        extract_tables()
-        describe_image()
-        build_knowledge()
-        db = create_vector_database()
-        
-        
-    retriever = db.as_retriever(
-        search_type="mmr",
-        search_kwargs={
-            "k": 3,
-            "fetch_k": 10,
-            "lambda_mult": 0.5
-        }
-    )
-    demo()
+    initialize_rag()
     chatbot()
