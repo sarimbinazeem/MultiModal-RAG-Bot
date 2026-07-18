@@ -19,15 +19,16 @@ from langchain_chroma import Chroma
 load_dotenv()
 API_KEY= os.getenv("GEMINI_API_KEY")
 
+
 #API Key error handling
 if not API_KEY:
      raise ValueError("GEMINI_API_KEY not found in .env file")
  
 #Gemini Client
 client=genai.Client(api_key=API_KEY)
-MODEL= "gemini-2.5-flash"
+MODEL = "gemini-flash-lite-latest"
 embedding_model = GoogleGenerativeAIEmbeddings(
-    model="models/text-embedding-004",
+    model="models/gemini-embedding-2",
     google_api_key=API_KEY
 )
 
@@ -137,7 +138,7 @@ def extract_tables():
     with pdfplumber.open(PDF_PATH) as pdf:
         table_counter = 1
         
-        for pageno,page in enumerate(pdf):
+        for pageno,page in enumerate(pdf.pages):
             tables= page.extract_tables() 
             
             for table in tables:
@@ -282,7 +283,12 @@ def convert_documents():
 def create_vector_database():
     print("\nCreating Vector Database...")
     docs= convert_documents()
-    
+    print(f"Total documents: {len(docs)}")
+
+    for i in range(min(5, len(docs))):
+        print("\n------------------------")
+        print(docs[i].metadata)
+        print(docs[i].page_content[:300])   
     db = Chroma.from_documents(
         documents=docs,
         embedding=embedding_model,
